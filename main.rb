@@ -19,8 +19,6 @@ module Assist
     else
       puts 'error'
     end
-
-
   end
 
   # White clues: Select the indices of the element present in secret array, then checks if the current index is present.
@@ -32,25 +30,15 @@ module Assist
     input.map!(&:to_i)
     clues = Hash.new(0)
     dupl = []
-    input.each_with_index do |element, index|
-      indices = secret.each_index.select { |e| secret[e] == element }
+    secret.each_with_index do |element, index|
+      indices = input.each_index.select { |e| input[e] == element }
       if indices.include?(index)
-        if input.tally.fetch(element, 0) >= secret.tally.fetch(element, 0) && input.tally.fetch(element, 0) > 1
-          clues[:white] += 1
-          clues[:red] -= 1
-        else
-          clues[:white] += 1
-        end
-      elsif indices.empty?
-        next
-      elsif dupl.include?(element) == false && input.tally.fetch(element, 0) >= secret.tally.fetch(element, 0)
-        clues[:red] += secret.tally.fetch(element, 0)
+        clues[:white] += 1
+      elsif indices.empty? == false && dupl.tally.fetch(element, 0) < input.tally.fetch(element, 0)
+        clues[:red] += 1
         dupl.push(element)
-      elsif dupl.include?(element) == false && input.tally.fetch(element, 0) < secret.tally.fetch(element, 0)
-        clues[:red] += input.tally.fetch(element, 0)
       end
     end
-    clues[:red] = 0 if clues[:red].positive? == false
     clues
   end
 
@@ -122,7 +110,7 @@ class CodeMaker
   end
 
   def test
-    @secret_code = [2, 1, 3, 3]
+    @secret_code = [2, 2, 1, 6]
   end
 end
 
