@@ -179,7 +179,7 @@ loop do
     computer = CodeMaker.new
     board = Board.new
     computer.test
-    secret = computer.secret_code
+    secret = computer.generate_code_computer
     turns = 0
     loop do
       turns += 1
