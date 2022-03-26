@@ -19,6 +19,8 @@ module Assist
     else
       puts 'error'
     end
+
+
   end
 
   # White clues: Select the indices of the element present in secret array, then checks if the current index is present.
@@ -28,23 +30,37 @@ module Assist
   # a single red clue per repeated element.
   def find_differences(input, secret)
     input.map!(&:to_i)
-    clues = []
+    clues = Hash.new(0)
     dupl = []
-    display = ""
     input.each_with_index do |element, index|
       indices = secret.each_index.select { |e| secret[e] == element }
       if indices.include?(index)
-        clues.push("●".colorize(:white))
+        if input.tally.fetch(element, 0) >= secret.tally.fetch(element, 0) && input.tally.fetch(element, 0) > 1
+          clues[:white] += 1
+          clues[:red] -= 1
+        else
+          clues[:white] += 1
+        end
       elsif indices.empty?
         next
-      elsif dupl.include?(element) == false
-        clues.push("●".colorize(:red))
+      elsif dupl.include?(element) == false && input.tally.fetch(element, 0) >= secret.tally.fetch(element, 0)
+        clues[:red] += secret.tally.fetch(element, 0)
         dupl.push(element)
+      elsif dupl.include?(element) == false && input.tally.fetch(element, 0) < secret.tally.fetch(element, 0)
+        clues[:red] += input.tally.fetch(element, 0)
       end
     end
-    clues.sort! {|a, b| b <=> a }
-    clues.each do |clue|
-      display += "#{clue}  "
+    clues[:red] = 0 if clues[:red].positive? == false
+    clues
+  end
+
+  def display_clues(clues)
+    display = ""
+    display = ["●".colorize(:white)] * clues[:white] * '  '
+    if display.empty? && clues[:red].positive?
+      display += ["●".colorize(:red)] * clues[:red] * '  '
+    elsif clues[:red].positive?
+      display += '  ' + ["●".colorize(:red)] * clues[:red] * '  '
     end
     display
   end
@@ -77,6 +93,7 @@ end
 
 # Initialize the secret code
 class CodeMaker
+  include Assist
   attr_accessor :secret_code
 
   def initialize
@@ -84,16 +101,36 @@ class CodeMaker
   end
 
   # Generates a new, random code for the game
-  def generate_code
+  def generate_code_computer
     4.times do
       @secret_code.push(rand(1..6))
     end
+  end
+
+  def generate_code_player
+    loop do
+      puts 'Please enter 4 numbers between 1 and 6 (without spaces)'
+      @secret_code = gets.chomp
+      if (numeric?(@secret_code) == true && @secret_code.length == 4) && (@secret_code.split('').all? { |element| element.to_i.positive? && element.to_i < 7 })
+        @secret_code = @secret_code.split('')
+        @secret_code.map!(&:to_i)
+        break
+      else
+        puts 'Wrong input'
+      end
+    end
+  end
+
+  def test
+    @secret_code = [2, 1, 3, 3]
   end
 end
 
 # Logic to display the code and check the win condition
 class Board
   include Assist
+
+  attr_accessor :current_clues
 
   # Displays the coloured code
   def display_code(arr)
@@ -107,12 +144,19 @@ class Board
       @input = gets.chomp
       if (numeric?(@input) == true && @input.length == 4) && (@input.split('').all? { |element| element.to_i.positive? && element.to_i < 7 })
         @input = @input.split('')
-        puts "#{set_color(@input)} #{find_differences(@input, secret)}"
+        puts "#{set_color(@input)} #{display_clues(find_differences(@input, secret))}"
         break
       else
         puts 'Wrong input'
       end
     end
+    check_win(@input, secret)
+  end
+
+  def get_input_computer(input, secret)
+    @input = input
+    puts "#{set_color(@input)} #{display_clues(find_differences(@input, secret))}"
+    @current_clues = find_differences(@input, secret)
     check_win(@input, secret)
   end
 
@@ -126,21 +170,58 @@ class Board
       false
     end
   end
-end
 
-yo = CodeMaker.new
-board = Board.new
-yo.generate_code
-secret = yo.secret_code
-turns = 0
-loop do
-  turns += 1
-  puts "You have #{12 - turns} turns left"
-  if board.get_input(secret)
-    break
-  elsif turns == 12
-    puts 'Game over, the code was:'
-    board.display_code(secret)
-    break
+  def initialize
+    @perm = [1, 2, 3, 4, 5, 6].repeated_permutation(4).to_a.sort
+  end
+
+  def algo(guess)
+    @perm.select! { |e| find_differences(guess, e) == @current_clues}
+    next_guess = @perm[rand(0..@perm.length - 1)]
+    next_guess
   end
 end
+
+loop do
+  puts 'Do you wanna be the CODEBREAKER or the CODEMAKER'
+  puts '1. CODEBREAKER'
+  puts '2. CODEMAKER'
+  gamemode = gets.chomp
+  if gamemode == '1'
+    computer = CodeMaker.new
+    board = Board.new
+    computer.test
+    secret = computer.secret_code
+    turns = 0
+    loop do
+      turns += 1
+      puts "You have #{12 - turns} turns left"
+      if board.get_input(secret)
+        break
+      elsif turns == 12
+        puts 'Game over, the code was:'
+        board.display_code(secret)
+        break
+      end
+    end
+  elsif gamemode == '2'
+    player = CodeMaker.new
+    board = Board.new
+    player.generate_code_player
+    secret = player.secret_code
+    turns = 0
+    input = [1, 1, 2, 2]
+    loop do
+      turns += 1
+      sleep 1
+      puts "Computer turn ##{turns}"
+      if board.get_input_computer(input, secret)
+        break
+      end
+      input = board.algo(input)
+    end
+  else
+    puts "Wrong input"
+  end
+end
+
