@@ -182,7 +182,7 @@ loop do
   if gamemode == '1'
     computer = CodeMaker.new
     board = Board.new
-    computer.test
+    computer.generate_code_computer
     secret = computer.secret_code
     turns = 0
     loop do
