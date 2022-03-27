@@ -30,13 +30,17 @@ module Assist
     input.map!(&:to_i)
     clues = Hash.new(0)
     dupl = []
-    secret.each_with_index do |element, index|
-      indices = input.each_index.select { |e| input[e] == element }
-      if indices.include?(index)
-        clues[:white] += 1
-      elsif indices.empty? == false && dupl.tally.fetch(element, 0) < input.tally.fetch(element, 0)
-        clues[:red] += 1
-        dupl.push(element)
+    input.each_with_index  do |element, index|
+      if secret.include?(element)
+        if secret[index] == element && input.tally.fetch(element, 0) > secret.tally.fetch(element, 0)
+          clues[:white] += 1
+          clues[:red] -= input.tally.fetch(element, 0) - secret.tally.fetch(element, 0)
+        elsif secret[index] == element
+          clues[:white] += 1
+        elsif dupl.tally.fetch(element, 0) < secret.tally.fetch(element, 0)
+          clues[:red] += 1
+          dupl.push(element)
+        end
       end
     end
     clues
@@ -110,7 +114,7 @@ class CodeMaker
   end
 
   def test
-    @secret_code = [2, 2, 1, 6]
+    @secret_code = [2,2,3,4]
   end
 end
 
@@ -178,7 +182,7 @@ loop do
   if gamemode == '1'
     computer = CodeMaker.new
     board = Board.new
-    computer.generate_code_computer
+    computer.test
     secret = computer.secret_code
     turns = 0
     loop do
